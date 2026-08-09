@@ -2,7 +2,7 @@
 const authConfig = {
   providers: [
     {
-      domain: "https://fresh-civet-17.clerk.accounts.dev",
+      domain: "https://desired-drum-7.clerk.accounts.dev",
       applicationID: "convex", // ← must be "convex", not a dynamic env var
     },
   ],

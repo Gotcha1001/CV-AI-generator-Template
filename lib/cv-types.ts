@@ -11,6 +11,7 @@ export interface GeneratedEducationEntry {
   institution: string;
   qualification: string;
   period: string;
+  description?: string;
 }
 
 export interface GeneratedTestimonialEntry {

@@ -36,6 +36,21 @@
 //   "closingNote": string
 // }
 
+// SUMMARY REQUIREMENTS:
+// Write "summary" as a polished, third-person professional biography of 5-7 sentences
+// (roughly 100-150 words) — not a one-liner. It should read like the opening paragraph
+// of a strong LinkedIn "About" section or executive bio, written in a natural,
+// confident, human tone (not a list of buzzwords). Weave together, where the data
+// supports it:
+// - who they are professionally and their strongest area of expertise
+// - relevant education/qualifications
+// - a concrete highlight or two from their work experience (not just "experienced in X")
+// - their personal interests, briefly, to add personality and make them memorable
+// - if links are provided (portfolio, LinkedIn, GitHub, etc.), reference what's there
+//   naturally (e.g. "with a portfolio showcasing...") without just listing raw URLs
+// Do not invent facts not present in the source data — only elaborate on and connect
+// what's given, in the candidate's own domain and voice.
+
 // ${targetLine}
 // If achievements are provided, select and order the ones most relevant to the target role in
 // "achievementHighlights" — do not invent achievements not present in the source data.
@@ -50,6 +65,7 @@
 //     references: cv.references,
 //     achievements: cv.achievements,
 //     interests: cv.interests,
+//     links: cv.links,
 //   },
 //   null,
 //   2,
@@ -134,7 +150,7 @@ You are a professional CV writer. Given the candidate data below, output ONLY va
   "summary": string,
   "topSkills": string[],
   "experience": [{ "company": string, "role": string, "period": string, "bullets": string[] }],
-  "education": [{ "institution": string, "qualification": string, "period": string }],
+  "education": [{ "institution": string, "qualification": string, "period": string, "description": string | null }],
   "testimonialHighlights": [{ "author": string, "text": string }],
   "achievementHighlights": [{ "title": string, "description": string }],
   "closingNote": string
@@ -154,6 +170,12 @@ supports it:
   naturally (e.g. "with a portfolio showcasing...") without just listing raw URLs
 Do not invent facts not present in the source data — only elaborate on and connect
 what's given, in the candidate's own domain and voice.
+
+EDUCATION REQUIREMENTS:
+For each education entry, set "description" to the source entry's "description" field
+copied VERBATIM (preserve line breaks, subject lists, and wording exactly as given).
+Do not paraphrase, summarize, or invent it. If the source entry has no description,
+set "description" to null.
 
 ${targetLine}
 If achievements are provided, select and order the ones most relevant to the target role in
