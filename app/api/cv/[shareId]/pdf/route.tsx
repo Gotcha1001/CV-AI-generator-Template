@@ -13,22 +13,21 @@ export async function GET(
   { params }: { params: Promise<{ shareId: string }> },
 ) {
   const { shareId } = await params;
-  const cv = await fetchQuery(api.cvs.getByShareId, { shareId });
-  if (!cv) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Same data shaping the web preview uses (lib/cv-data.ts) — the PDF's
-  // `g` / testimonials / achievements / theme / layout are guaranteed
-  // identical to what /cv/[shareId] rendered.
-  const data = prepareCvData(cv);
+  // getByShareId returns { cv, activeVersion } | null
+  const result = await fetchQuery(api.cvs.getByShareId, { shareId });
+  if (!result?.cv || !result?.activeVersion) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const { cv, activeVersion } = result;
+
+  // Same data shaping the web preview uses — both args required
+  const data = prepareCvData(cv, activeVersion);
+
   const buildDocument =
     PDF_LAYOUT_BUILDERS[data.layout.id] ?? PDF_LAYOUT_BUILDERS.centered;
 
-  // buildDocument's return type is widened to ReactElement<unknown> by
-  // whatever generic builder-map shape lib/pdf-layouts.ts uses.
-  // renderToBuffer's signature specifically wants a <Document> element
-  // (ReactElement<DocumentProps>), so assert it here rather than loosening
-  // the builder map's types — every builder in PDF_LAYOUT_BUILDERS returns
-  // a <Document> at runtime already, this just tells TS that.
   const document = buildDocument({
     cv,
     ...data,
