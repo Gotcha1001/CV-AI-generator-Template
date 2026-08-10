@@ -13,6 +13,7 @@
     "@clerk/nextjs": "^6.37.4",
     "@clerk/themes": "^2.4.57",
     "@hookform/resolvers": "^5.2.2",
+    "@mozilla/readability": "^0.6.0",
     "@react-pdf/renderer": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",
@@ -23,6 +24,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.35.2",
     "input-otp": "^1.4.2",
+    "jsdom": "^30.0.1",
     "livekit-client": "^2.17.3",
     "livekit-server-sdk": "^2.15.0",
     "lucide-react": "^0.577.0",
@@ -44,6 +46,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
