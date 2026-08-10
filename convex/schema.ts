@@ -16,6 +16,25 @@ export default defineSchema({
     title: v.string(), // internal label, e.g. "Web Designer version"
     targetRole: v.optional(v.string()), // e.g. "Web Designer"; empty/undefined = neutral
     isNeutral: v.boolean(),
+    jobDescription: v.optional(v.string()),
+    jobSourceUrl: v.optional(v.string()), // where it was imported from, if any
+
+    // NEW: deterministic match analysis, computed alongside generatedContent.
+    // Kept separate from generatedContent (which is AI prose) so it can be
+    // recomputed/displayed independently — e.g. in the CVs list without
+    // re-running generation.
+    matchAnalysis: v.optional(
+      v.object({
+        score: v.number(), // 0-100, code-computed, see step 3
+        requiredKeywords: v.array(v.string()),
+        niceToHaveKeywords: v.array(v.string()),
+        matchedKeywords: v.array(v.string()),
+        missingKeywords: v.array(v.string()),
+        // short, human-readable coaching notes, e.g. "Add 'CI/CD' if you've
+        // used GitHub Actions / Jenkins — this role lists it as required."
+        suggestions: v.array(v.string()),
+      }),
+    ),
     style: v.optional(v.string()),
     // NEW: which of the 4 layout templates (lib/layouts.ts CvLayoutId)
     // renders this CV, both in the web preview and the PDF download.

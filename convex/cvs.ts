@@ -25,6 +25,7 @@ async function requireUser(ctx: QueryCtx | MutationCtx) {
 const cvFields = {
   title: v.string(),
   targetRole: v.optional(v.string()),
+  jobDescription: v.optional(v.string()),
   isNeutral: v.boolean(),
   style: v.optional(v.string()),
   layout: v.optional(v.string()), // NEW — see convex/schema.ts
@@ -198,5 +199,22 @@ export const _saveGenerationError = internalMutation({
       status: "failed",
       generationError: args.error,
     });
+  },
+});
+
+export const _saveMatchAnalysis = internalMutation({
+  args: {
+    cvId: v.id("cvs"),
+    matchAnalysis: v.object({
+      score: v.number(),
+      requiredKeywords: v.array(v.string()),
+      niceToHaveKeywords: v.array(v.string()),
+      matchedKeywords: v.array(v.string()),
+      missingKeywords: v.array(v.string()),
+      suggestions: v.array(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.cvId, { matchAnalysis: args.matchAnalysis });
   },
 });

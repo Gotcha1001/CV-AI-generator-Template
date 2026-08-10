@@ -18,10 +18,12 @@ import { DEFAULT_CV_LAYOUT_ID } from "@/lib/layouts";
 import { toast } from "sonner";
 import Image from "next/image";
 import type { Id } from "@/convex/_generated/dataModel";
+import { JdUrlImport } from "@/app/components/jd-url-import";
 
 type FormValues = {
   title: string;
   targetRole: string;
+  jobDescription: string;
   isNeutral: boolean;
   style: string;
   layout: string;
@@ -61,6 +63,7 @@ type FormValues = {
 const EMPTY_DEFAULTS: FormValues = {
   title: "",
   targetRole: "",
+  jobDescription: "",
   isNeutral: false,
   style: DEFAULT_CV_STYLE_ID,
   layout: DEFAULT_CV_LAYOUT_ID,
@@ -128,6 +131,7 @@ function CreateCvForm() {
     reset({
       title: existingCv.title,
       targetRole: existingCv.targetRole ?? "",
+      jobDescription: existingCv.jobDescription ?? "",
       isNeutral: existingCv.isNeutral,
       style: existingCv.style ?? DEFAULT_CV_STYLE_ID,
       layout: existingCv.layout ?? DEFAULT_CV_LAYOUT_ID,
@@ -199,6 +203,7 @@ function CreateCvForm() {
   const ach = useFieldArray({ control, name: "achievements" });
 
   const isNeutral = watch("isNeutral");
+  const jobDescription = watch("jobDescription");
   const photoUrl = watch("personalInfo.photoUrl");
   const videoUrl = watch("personalInfo.videoUrl");
   const style = watch("style");
@@ -223,6 +228,12 @@ function CreateCvForm() {
           values.title ||
           (values.isNeutral ? "General CV" : `${values.targetRole} CV`),
         targetRole: values.isNeutral ? undefined : values.targetRole,
+        // Same "cleared when neutral" pattern as targetRole — a neutral CV
+        // shouldn't carry a stale JD forward into its tailoring context.
+        jobDescription:
+          values.isNeutral || !values.jobDescription.trim()
+            ? undefined
+            : values.jobDescription.trim(),
         isNeutral: values.isNeutral,
         style: values.style,
         layout: values.layout,
@@ -292,16 +303,49 @@ function CreateCvForm() {
           </Label>
         </div>
         {!isNeutral && (
-          <div>
-            <Label className="text-zinc-900 dark:text-white">
-              Target job / role
-            </Label>
-            <Input
-              {...register("targetRole")}
-              placeholder="e.g. Web Designer"
-              required={!isNeutral}
-            />
-          </div>
+          <>
+            <div>
+              <Label className="text-zinc-900 dark:text-white">
+                Target job / role
+              </Label>
+              <Input
+                {...register("targetRole")}
+                placeholder="e.g. Web Designer"
+                required={!isNeutral}
+              />
+            </div>
+
+            <div>
+              <div className="flex items-baseline justify-between">
+                <Label
+                  htmlFor="jobDescription"
+                  className="text-zinc-900 dark:text-white"
+                >
+                  Job description (optional, recommended)
+                </Label>
+                {jobDescription.trim().length > 0 && (
+                  <span className="text-xs text-zinc-900/50 dark:text-white/50">
+                    {jobDescription.trim().split(/\s+/).length} words
+                  </span>
+                )}
+              </div>
+              <JdUrlImport
+                onImported={(text) =>
+                  setValue("jobDescription", text, { shouldDirty: true })
+                }
+              />
+              <Textarea
+                id="jobDescription"
+                {...register("jobDescription")}
+                rows={8}
+                placeholder="Paste the full job posting here. We'll pull out the specific skills and keywords it wants and tailor your CV — and show you a match score — instead of just generic tailoring based on the role title above."
+              />
+              <p className="mt-1 text-xs text-zinc-900/60 dark:text-white/60">
+                Left blank, we&apos;ll tailor generically from the role title
+                instead.
+              </p>
+            </div>
+          </>
         )}
 
         <div>
