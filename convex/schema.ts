@@ -1,6 +1,17 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+export const matchAnalysisValidator = v.object({
+  score: v.number(), // 0-100, code-computed
+  requiredKeywords: v.array(v.string()),
+  niceToHaveKeywords: v.array(v.string()),
+  matchedKeywords: v.array(v.string()),
+  missingKeywords: v.array(v.string()),
+  // short, human-readable coaching notes, e.g. "Add 'CI/CD' if you've
+  // used GitHub Actions / Jenkins — this role lists it as required."
+  suggestions: v.array(v.string()),
+});
+
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
@@ -11,6 +22,8 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_clerk_id", ["clerkId"]),
 
+  // One row per "application" — the input data + target job.
+  // Styling/layout/generation output live in cvVersions, not here.
   cvs: defineTable({
     userId: v.id("users"),
     title: v.string(), // internal label, e.g. "Web Designer version"
@@ -19,35 +32,16 @@ export default defineSchema({
     jobDescription: v.optional(v.string()),
     jobSourceUrl: v.optional(v.string()), // where it was imported from, if any
 
-    // NEW: deterministic match analysis, computed alongside generatedContent.
-    // Kept separate from generatedContent (which is AI prose) so it can be
-    // recomputed/displayed independently — e.g. in the CVs list without
-    // re-running generation.
-    matchAnalysis: v.optional(
-      v.object({
-        score: v.number(), // 0-100, code-computed, see step 3
-        requiredKeywords: v.array(v.string()),
-        niceToHaveKeywords: v.array(v.string()),
-        matchedKeywords: v.array(v.string()),
-        missingKeywords: v.array(v.string()),
-        // short, human-readable coaching notes, e.g. "Add 'CI/CD' if you've
-        // used GitHub Actions / Jenkins — this role lists it as required."
-        suggestions: v.array(v.string()),
-      }),
-    ),
-    style: v.optional(v.string()),
-    // NEW: which of the 4 layout templates (lib/layouts.ts CvLayoutId)
-    // renders this CV, both in the web preview and the PDF download.
-    // Optional/string, same pattern as `style` — unset rows fall back
-    // to DEFAULT_CV_LAYOUT_ID via getCvLayoutMeta(), no migration needed.
-    layout: v.optional(v.string()),
     shareId: v.string(), // public slug: /cv/[shareId]
+    activeVersionId: v.optional(v.id("cvVersions")), // which version is live on the share link
+
     status: v.union(
       v.literal("draft"),
       v.literal("generating"),
       v.literal("ready"),
       v.literal("failed"),
     ),
+
     personalInfo: v.object({
       fullName: v.string(),
       idNumber: v.optional(v.string()),
@@ -105,12 +99,33 @@ export default defineSchema({
       }),
     ),
     interests: v.array(v.string()), // e.g. ["Chess", "Open-source", "Trail running"]
-    // Raw AI output — shape varies by prompt, so kept loose
-    generatedContent: v.optional(v.any()),
+
     generationError: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_share_id", ["shareId"]),
+
+  // Append-only. Every regeneration AND every style/layout change on the
+  // same application creates a new row here — never overwritten.
+  cvVersions: defineTable({
+    cvId: v.id("cvs"),
+    userId: v.id("users"), // denormalized so ownership checks don't need a join back to cvs
+    versionNumber: v.number(), // 1, 2, 3... monotonic per cv, for display ("v3") and ordering
+    label: v.string(), // e.g. "Centered", "Minimal ATS", or auto "Version 3"
+
+    style: v.optional(v.string()),
+    // which of the layout templates (lib/layouts.ts CvLayoutId) renders this
+    // version, both in the web preview and the PDF download. Optional —
+    // unset rows fall back to DEFAULT_CV_LAYOUT_ID via getCvLayoutMeta().
+    layout: v.optional(v.string()),
+
+    generatedContent: v.any(), // full AI output snapshot for this version
+    matchAnalysis: v.optional(matchAnalysisValidator),
+
+    createdAt: v.number(),
+  })
+    .index("by_cv", ["cvId"])
+    .index("by_cv_and_version", ["cvId", "versionNumber"]),
 });

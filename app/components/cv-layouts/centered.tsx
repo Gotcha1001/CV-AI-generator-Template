@@ -370,7 +370,7 @@ const CARD_HOVER: Record<string, string> = {
   "teal-breeze": "hover:bg-teal-500/10 dark:hover:bg-teal-500/15",
 };
 
-export function CenteredLayout({ cv }: CvLayoutProps) {
+export function CenteredLayout({ cv, version }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -384,7 +384,7 @@ export function CenteredLayout({ cv }: CvLayoutProps) {
     phone,
     photoUrl,
     videoUrl,
-  } = prepareCvData(cv);
+  } = prepareCvData(cv, version);
 
   const cardHover = CARD_HOVER[theme.id] ?? CARD_HOVER.neutral;
   const cardClass = `rounded-xl border p-4 transition-colors duration-200 ${theme.web.border} ${cardHover}`;

@@ -217,7 +217,7 @@ import { Button } from "@/components/ui/button";
 import { prepareCvData, toWhatsAppNumber } from "@/lib/cv-data";
 import type { CvLayoutProps } from "./types";
 
-export function MinimalAtsLayout({ cv }: CvLayoutProps) {
+export function MinimalAtsLayout({ cv, version }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -230,7 +230,7 @@ export function MinimalAtsLayout({ cv }: CvLayoutProps) {
     phone,
     photoUrl,
     videoUrl,
-  } = prepareCvData(cv);
+  } = prepareCvData(cv, version);
   const ruleClass = `border-b pb-1 mb-3 ${theme.web.borderSoft}`;
 
   return (
