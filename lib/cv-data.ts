@@ -11,10 +11,10 @@ import type { GeneratedCvContent } from "@/lib/cv-types";
 import { getCvStyle } from "@/lib/styles";
 import { getCvLayoutMeta } from "@/lib/layouts";
 
-export function prepareCvData(cv: Doc<"cvs">) {
-  const g = cv.generatedContent as GeneratedCvContent | undefined;
-  const theme = getCvStyle(cv.style);
-  const layout = getCvLayoutMeta(cv.layout);
+export function prepareCvData(cv: Doc<"cvs">, version: Doc<"cvVersions">) {
+  const g = version.generatedContent as GeneratedCvContent | undefined;
+  const theme = getCvStyle(version.style);
+  const layout = getCvLayoutMeta(version.layout);
   const testimonials = g?.testimonialHighlights ?? cv.testimonials;
   const achievements = g?.achievementHighlights ?? cv.achievements;
   const hasSidebarContent =

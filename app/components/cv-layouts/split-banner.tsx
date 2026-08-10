@@ -258,7 +258,7 @@ import { Button } from "@/components/ui/button";
 import { prepareCvData, toWhatsAppNumber } from "@/lib/cv-data";
 import type { CvLayoutProps } from "./types";
 
-export function SplitBannerLayout({ cv }: CvLayoutProps) {
+export function SplitBannerLayout({ cv, version }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -270,7 +270,7 @@ export function SplitBannerLayout({ cv }: CvLayoutProps) {
     phone,
     photoUrl,
     videoUrl,
-  } = prepareCvData(cv);
+  } = prepareCvData(cv, version);
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">

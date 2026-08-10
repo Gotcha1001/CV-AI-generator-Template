@@ -328,7 +328,7 @@ const INTEREST_HOVER: Record<string, string> = {
 
 const LONG_INTEREST_THRESHOLD = 40;
 
-export function SidebarPhotoLayout({ cv }: CvLayoutProps) {
+export function SidebarPhotoLayout({ cv, version }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -340,7 +340,7 @@ export function SidebarPhotoLayout({ cv }: CvLayoutProps) {
     phone,
     photoUrl,
     videoUrl,
-  } = prepareCvData(cv);
+  } = prepareCvData(cv, version);
 
   const skills = g?.topSkills ?? [];
   const interestHover = INTEREST_HOVER[theme.id] ?? INTEREST_HOVER.neutral;

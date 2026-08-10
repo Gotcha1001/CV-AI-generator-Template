@@ -10,7 +10,7 @@ export default async function PublicCvPage({
   params: Promise<{ shareId: string }>;
 }) {
   const { shareId } = await params;
-  const cv = await fetchQuery(api.cvs.getByShareId, { shareId });
-  if (!cv) notFound();
-  return <CvAnimatedView cv={cv} />;
+  const result = await fetchQuery(api.cvs.getByShareId, { shareId });
+  if (!result) notFound();
+  return <CvAnimatedView cv={result.cv} version={result.activeVersion} />;
 }

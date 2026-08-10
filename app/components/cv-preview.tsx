@@ -8,6 +8,7 @@ import { CenteredLayout } from "./cv-layouts/centered";
 import { SidebarPhotoLayout } from "./cv-layouts/sidebar-photo";
 import { SplitBannerLayout } from "./cv-layouts/split-banner";
 import { MinimalAtsLayout } from "./cv-layouts/minimal-ats";
+import type { CvLayoutProps } from "./cv-layouts/types";
 import { JSX } from "react";
 
 /**
@@ -18,7 +19,7 @@ import { JSX } from "react";
  */
 const LAYOUT_COMPONENTS: Record<
   CvLayoutId,
-  (props: { cv: Doc<"cvs"> }) => JSX.Element
+  (props: CvLayoutProps) => JSX.Element
 > = {
   centered: CenteredLayout,
   "sidebar-photo": SidebarPhotoLayout,
@@ -26,7 +27,13 @@ const LAYOUT_COMPONENTS: Record<
   "minimal-ats": MinimalAtsLayout,
 };
 
-export function CvAnimatedView({ cv }: { cv: Doc<"cvs"> }) {
+export function CvAnimatedView({
+  cv,
+  version,
+}: {
+  cv: Doc<"cvs">;
+  version: Doc<"cvVersions">;
+}) {
   const { fullName } = cv.personalInfo;
 
   if (cv.status === "generating" || cv.status === "draft") {
@@ -56,8 +63,8 @@ export function CvAnimatedView({ cv }: { cv: Doc<"cvs"> }) {
     );
   }
 
-  const layoutId = getCvLayoutMeta(cv.layout).id;
+  const layoutId = getCvLayoutMeta(version.layout).id;
   const Layout = LAYOUT_COMPONENTS[layoutId] ?? CenteredLayout;
 
-  return <Layout cv={cv} />;
+  return <Layout cv={cv} version={version} />;
 }

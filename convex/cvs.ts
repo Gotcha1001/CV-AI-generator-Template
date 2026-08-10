@@ -8,6 +8,8 @@ import {
   MutationCtx,
 } from "./_generated/server";
 import { customAlphabet } from "nanoid";
+import { matchAnalysisValidator } from "./schema";
+import { Id } from "./_generated/dataModel";
 
 const nanoid = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
 
@@ -22,13 +24,26 @@ async function requireUser(ctx: QueryCtx | MutationCtx) {
   return user;
 }
 
+// Shared so every place that inserts a cvVersions row numbers it the same
+// way — max existing versionNumber + 1, not row count (row count breaks
+// once any version has been deleted).
+async function nextVersionNumber(ctx: MutationCtx, cvId: Id<"cvs">) {
+  const last = await ctx.db
+    .query("cvVersions")
+    .withIndex("by_cv", (q) => q.eq("cvId", cvId))
+    .order("desc")
+    .first();
+  return (last?.versionNumber ?? 0) + 1;
+}
+
+// Input fields for the application itself. NOTE: style/layout are NOT here
+// — those are per-version now (see cvVersions in schema.ts), chosen at
+// generation/restyle time via _saveGeneratedContent, not on the base draft.
 const cvFields = {
   title: v.string(),
   targetRole: v.optional(v.string()),
   jobDescription: v.optional(v.string()),
   isNeutral: v.boolean(),
-  style: v.optional(v.string()),
-  layout: v.optional(v.string()), // NEW — see convex/schema.ts
   personalInfo: v.object({
     fullName: v.string(),
     idNumber: v.optional(v.string()),
@@ -111,7 +126,8 @@ export const upsertCv = mutation({
       userId: user._id,
       shareId: nanoid(),
       status: "draft",
-      generatedContent: undefined,
+      // no generatedContent/activeVersionId here — nothing has been
+      // generated yet, so there's nothing to point at
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -124,6 +140,17 @@ export const deleteCv = mutation({
     const user = await requireUser(ctx);
     const cv = await ctx.db.get(args.cvId);
     if (!cv || cv.userId !== user._id) throw new Error("Not found");
+
+    // Clean up every version too — orphaned cvVersions rows would otherwise
+    // sit around forever with no parent.
+    const versions = await ctx.db
+      .query("cvVersions")
+      .withIndex("by_cv", (q) => q.eq("cvId", args.cvId))
+      .collect();
+    for (const version of versions) {
+      await ctx.db.delete(version._id);
+    }
+
     await ctx.db.delete(args.cvId);
   },
 });
@@ -155,6 +182,22 @@ export const getCv = query({
   },
 });
 
+// Convenience for the editor/preview UI: the cv plus its currently active
+// version's content, joined into one object. Avoids every screen having to
+// do the two-query dance itself.
+export const getCvWithActiveVersion = query({
+  args: { cvId: v.id("cvs") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const cv = await ctx.db.get(args.cvId);
+    if (!cv || cv.userId !== user._id) return null;
+    const activeVersion = cv.activeVersionId
+      ? await ctx.db.get(cv.activeVersionId)
+      : null;
+    return { cv, activeVersion };
+  },
+});
+
 // PUBLIC — no auth check. This is what the /cv/[shareId] page reads.
 export const getByShareId = query({
   args: { shareId: v.string() },
@@ -163,8 +206,12 @@ export const getByShareId = query({
       .query("cvs")
       .withIndex("by_share_id", (q) => q.eq("shareId", args.shareId))
       .first();
-    if (!cv || cv.status !== "ready") return null;
-    return cv;
+    if (!cv || cv.status !== "ready" || !cv.activeVersionId) return null;
+
+    const activeVersion = await ctx.db.get(cv.activeVersionId);
+    if (!activeVersion) return null;
+
+    return { cv, activeVersion };
   },
 });
 
@@ -181,14 +228,43 @@ export const _setGenerating = internalMutation({
   },
 });
 
+// Appends a new version (AI regeneration OR a style/layout-only change use
+// this same path — see the message above for why that's one function, not
+// two). Never overwrites a prior version; the new one becomes active.
 export const _saveGeneratedContent = internalMutation({
-  args: { cvId: v.id("cvs"), generatedContent: v.any() },
+  args: {
+    cvId: v.id("cvs"),
+    generatedContent: v.any(),
+    style: v.optional(v.string()),
+    layout: v.optional(v.string()),
+    label: v.optional(v.string()), // e.g. from UI: "Centered"
+    matchAnalysis: v.optional(matchAnalysisValidator),
+  },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.cvId, {
+    const cv = await ctx.db.get(args.cvId);
+    if (!cv) throw new Error("CV not found");
+
+    const versionNumber = await nextVersionNumber(ctx, args.cvId);
+
+    const versionId = await ctx.db.insert("cvVersions", {
+      cvId: args.cvId,
+      userId: cv.userId,
+      versionNumber,
+      label: args.label ?? args.style ?? `Version ${versionNumber}`,
+      style: args.style,
+      layout: args.layout,
       generatedContent: args.generatedContent,
+      matchAnalysis: args.matchAnalysis,
+      createdAt: Date.now(),
+    });
+
+    await ctx.db.patch(args.cvId, {
+      activeVersionId: versionId, // newest version becomes the live one by default
       status: "ready",
       updatedAt: Date.now(),
     });
+
+    return versionId;
   },
 });
 
@@ -202,19 +278,103 @@ export const _saveGenerationError = internalMutation({
   },
 });
 
-export const _saveMatchAnalysis = internalMutation({
+// Match analysis is per-version now (it's computed against a specific
+// generatedContent snapshot), so this patches the version, not the cv.
+// If you compute match analysis in the same action call as generation,
+// just pass matchAnalysis into _saveGeneratedContent above instead and
+// skip this call entirely.
+export const _saveMatchAnalysisForVersion = internalMutation({
   args: {
-    cvId: v.id("cvs"),
-    matchAnalysis: v.object({
-      score: v.number(),
-      requiredKeywords: v.array(v.string()),
-      niceToHaveKeywords: v.array(v.string()),
-      matchedKeywords: v.array(v.string()),
-      missingKeywords: v.array(v.string()),
-      suggestions: v.array(v.string()),
-    }),
+    versionId: v.id("cvVersions"),
+    matchAnalysis: matchAnalysisValidator,
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.cvId, { matchAnalysis: args.matchAnalysis });
+    await ctx.db.patch(args.versionId, { matchAnalysis: args.matchAnalysis });
+  },
+});
+
+// Light payload for the history gallery — no generatedContent, so the list
+// stays fast even with many versions. Full snapshot comes from
+// getCvVersionContent when the user actually opens/previews one.
+export const listCvVersions = query({
+  args: { cvId: v.id("cvs") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const cv = await ctx.db.get(args.cvId);
+    if (!cv || cv.userId !== user._id) throw new Error("Not found");
+
+    const versions = await ctx.db
+      .query("cvVersions")
+      .withIndex("by_cv", (q) => q.eq("cvId", args.cvId))
+      .order("desc")
+      .collect();
+
+    return versions.map((version) => ({
+      _id: version._id,
+      versionNumber: version.versionNumber,
+      label: version.label,
+      style: version.style,
+      layout: version.layout,
+      matchScore: version.matchAnalysis?.score,
+      isActive: version._id === cv.activeVersionId,
+      createdAt: version.createdAt,
+    }));
+  },
+});
+
+export const getCvVersionContent = query({
+  args: { versionId: v.id("cvVersions") },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const version = await ctx.db.get(args.versionId);
+    if (!version || version.userId !== user._id) throw new Error("Not found");
+    return version;
+  },
+});
+
+// Point the share link at a different existing version. This is the whole
+// "pick which one to send to the employer" flow — no copying, no diffing.
+export const setActiveVersion = mutation({
+  args: { cvId: v.id("cvs"), versionId: v.id("cvVersions") },
+  handler: async (ctx, { cvId, versionId }) => {
+    const user = await requireUser(ctx);
+    const cv = await ctx.db.get(cvId);
+    if (!cv || cv.userId !== user._id) throw new Error("Not found");
+
+    const version = await ctx.db.get(versionId);
+    if (!version || version.cvId !== cvId) throw new Error("Not found");
+
+    await ctx.db.patch(cvId, {
+      activeVersionId: versionId,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Permanent delete. If the deleted version was the active one, fall back
+// to the newest remaining version (or clear activeVersionId if none left).
+export const deleteVersion = mutation({
+  args: { versionId: v.id("cvVersions") },
+  handler: async (ctx, { versionId }) => {
+    const user = await requireUser(ctx);
+    const version = await ctx.db.get(versionId);
+    if (!version || version.userId !== user._id) throw new Error("Not found");
+
+    const cv = await ctx.db.get(version.cvId);
+    if (!cv || cv.userId !== user._id) throw new Error("Not found");
+
+    await ctx.db.delete(versionId);
+
+    if (cv.activeVersionId === versionId) {
+      const fallback = await ctx.db
+        .query("cvVersions")
+        .withIndex("by_cv", (q) => q.eq("cvId", version.cvId))
+        .order("desc")
+        .first();
+      await ctx.db.patch(version.cvId, {
+        activeVersionId: fallback?._id,
+        updatedAt: Date.now(),
+      });
+    }
   },
 });
