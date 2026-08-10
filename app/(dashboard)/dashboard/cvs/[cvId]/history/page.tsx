@@ -20,11 +20,12 @@ import { CvAnimatedView } from "@/app/components/cv-preview";
 export default function CvHistoryPage() {
   const params = useParams();
   const router = useRouter();
-  const cvId = params.cvId as Id<"cvs">;
 
-  // getCv returns Doc<"cvs"> | null
-  const cv = useQuery(api.cvs.getCv, { cvId });
-  const versions = useQuery(api.cvs.listCvVersions, { cvId });
+  // May be undefined during first paint / bad navigation — never pass that to Convex
+  const cvId = params.cvId as Id<"cvs"> | undefined;
+
+  const cv = useQuery(api.cvs.getCv, cvId ? { cvId } : "skip");
+  const versions = useQuery(api.cvs.listCvVersions, cvId ? { cvId } : "skip");
 
   const setActiveVersion = useMutation(api.cvs.setActiveVersion);
   const deleteVersion = useMutation(api.cvs.deleteVersion);
@@ -39,6 +40,7 @@ export default function CvHistoryPage() {
   );
 
   async function handleShare(versionId: Id<"cvVersions">) {
+    if (!cvId) return;
     await setActiveVersion({ cvId, versionId });
     if (cv?.shareId) {
       const link = `${window.location.origin}/cv/${cv.shareId}`;
@@ -58,6 +60,14 @@ export default function CvHistoryPage() {
     } finally {
       setDeletingId(null);
     }
+  }
+
+  if (!cvId) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 px-4 text-center text-muted-foreground">
+        Missing CV id.
+      </div>
+    );
   }
 
   if (versions === undefined || cv === undefined) {
