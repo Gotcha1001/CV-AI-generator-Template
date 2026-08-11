@@ -105,11 +105,24 @@ const cvFields = {
 
 // Create new draft, or update an existing one if cvId is passed.
 // Does NOT trigger AI generation — that's a separate action call from the client.
+//
+// preserveStatus: pass true when this call is just saving shared fields
+// in place (e.g. from the version-edit form) and should NOT knock the cv
+// back to "draft". cv.status is a single field shared across every
+// version — forcing it to "draft" here used to make every version's
+// preview show the "Generating..." placeholder forever, since nothing
+// re-triggers AI generation from this mutation. Default is false so the
+// original create-flow behavior (draft -> generate -> ready) is unchanged
+// for callers that don't pass it.
 export const upsertCv = mutation({
-  args: { cvId: v.optional(v.id("cvs")), ...cvFields },
+  args: {
+    cvId: v.optional(v.id("cvs")),
+    preserveStatus: v.optional(v.boolean()),
+    ...cvFields,
+  },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const { cvId, ...fields } = args;
+    const { cvId, preserveStatus, ...fields } = args;
     if (cvId) {
       const existing = await ctx.db.get(cvId);
       if (!existing || existing.userId !== user._id)
@@ -117,7 +130,7 @@ export const upsertCv = mutation({
       await ctx.db.patch(cvId, {
         ...fields,
         updatedAt: Date.now(),
-        status: "draft",
+        ...(preserveStatus ? {} : { status: "draft" }),
       });
       return cvId;
     }
@@ -376,5 +389,58 @@ export const deleteVersion = mutation({
         updatedAt: Date.now(),
       });
     }
+  },
+});
+
+// convex/cvs.ts
+// Replace the existing updateVersionContent mutation with this version.
+// Only change: style and layout are now optional args that get patched
+// alongside generatedContent, since the edit page lets you change them too.
+
+export const updateVersionContent = mutation({
+  args: {
+    versionId: v.id("cvVersions"),
+    generatedContent: v.any(),
+    label: v.optional(v.string()),
+    style: v.optional(v.string()),
+    layout: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const version = await ctx.db.get(args.versionId);
+    if (!version || version.userId !== user._id) throw new Error("Not found");
+    await ctx.db.patch(args.versionId, {
+      generatedContent: args.generatedContent,
+      ...(args.label !== undefined ? { label: args.label } : {}),
+      ...(args.style !== undefined ? { style: args.style } : {}),
+      ...(args.layout !== undefined ? { layout: args.layout } : {}),
+      editedAt: Date.now(), // see schema note below
+    });
+  },
+});
+
+// One-time repair for cvs whose status got stuck on "draft"/"generating"
+// by the old upsertCv bug, even though they have a perfectly good
+// activeVersionId sitting there. Safe no-op if nothing's broken.
+// One-time repair for cvs whose status got stuck on "draft"/"generating"
+// by the old upsertCv bug, even though they have a working activeVersionId.
+// Only touches your own cvs. Safe no-op on anything not actually broken.
+export const _repairStuckStatuses = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const myCvs = await ctx.db
+      .query("cvs")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    let repaired = 0;
+    for (const cv of myCvs) {
+      if (cv.activeVersionId && cv.status !== "ready") {
+        await ctx.db.patch(cv._id, { status: "ready" });
+        repaired++;
+      }
+    }
+    return { checked: myCvs.length, repaired };
   },
 });

@@ -160,6 +160,17 @@ export default function CvHistoryPage() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() =>
+                  router.push(
+                    `/dashboard/cvs/${cvId}/history/${version._id}/edit`,
+                  )
+                }
+              >
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => handleShare(version._id)}
               >
                 Share
