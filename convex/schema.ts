@@ -125,6 +125,7 @@ export default defineSchema({
     matchAnalysis: v.optional(matchAnalysisValidator),
 
     createdAt: v.number(),
+    editedAt: v.optional(v.number()),
   })
     .index("by_cv", ["cvId"])
     .index("by_cv_and_version", ["cvId", "versionNumber"]),
