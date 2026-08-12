@@ -1,25 +1,9 @@
-// lib/layouts.ts
-//
-// Central registry of CV *layout* templates. A CV stores the chosen
-// layout's `id` on `cv.layout` (see convex/schema.ts), exactly the same
-// pattern as `cv.style` in lib/styles.ts.
-//
-// - The web preview (components/cv-layouts/index.tsx) picks a React
-//   component from LAYOUT_COMPONENTS keyed by this id.
-// - The PDF renderer (app/api/cv/[shareId]/pdf/route.ts) picks a
-//   document-builder function from lib/pdf-layouts/index.ts keyed by the
-//   same id.
-//
-// Adding a 5th layout = add an entry here + one web component +
-// one pdf component + register both in the two index files below.
-// Everything else (theme colors, the form, the selector UI) already
-// works generically off this list.
-
 export type CvLayoutId =
   | "centered"
   | "sidebar-photo"
   | "split-banner"
-  | "minimal-ats";
+  | "minimal-ats"
+  | "graph-stats";
 
 export interface CvLayoutMeta {
   id: CvLayoutId;
@@ -51,6 +35,12 @@ export const CV_LAYOUTS: CvLayoutMeta[] = [
     name: "Minimal ATS",
     description:
       "Clean single-column, no decorative cards — optimized for readability and applicant-tracking-system parsing.",
+  },
+  {
+    id: "graph-stats",
+    name: "Graph Stats",
+    description:
+      "Animated skill-signal bar chart and experience-depth radar chart, plus the standard header/experience/education sections.",
   },
 ];
 

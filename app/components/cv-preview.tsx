@@ -1,4 +1,3 @@
-// components/cv-preview.tsx
 "use client";
 
 import { motion } from "framer-motion";
@@ -10,6 +9,9 @@ import { SplitBannerLayout } from "./cv-layouts/split-banner";
 import { MinimalAtsLayout } from "./cv-layouts/minimal-ats";
 import type { CvLayoutProps } from "./cv-layouts/types";
 import { JSX } from "react";
+import { GraphStatsLayout } from "./cv-layouts/graph-stats";
+import { useInterludeAudio } from "@/hooks/use-interlude-audio";
+import { InterludeAudioToggle } from "@/app/components/interlude-audio-toggle";
 
 /**
  * One entry per CvLayoutId in lib/layouts.ts. Adding a 5th layout means
@@ -25,6 +27,7 @@ const LAYOUT_COMPONENTS: Record<
   "sidebar-photo": SidebarPhotoLayout,
   "split-banner": SplitBannerLayout,
   "minimal-ats": MinimalAtsLayout,
+  "graph-stats": GraphStatsLayout,
 };
 
 export function CvAnimatedView({
@@ -36,9 +39,16 @@ export function CvAnimatedView({
 }) {
   const { fullName } = cv.personalInfo;
 
+  // Always-mounted here — the hook itself starts/stops based on the
+  // `active` flag it's given below, and tears down on unmount (i.e. when
+  // the person navigates away from this view). Mirrors the doc comment
+  // in graph-stats.tsx which assumed this was already happening.
+  const { muted, toggleMute } = useInterludeAudio(true);
+
   if (cv.status === "generating" || cv.status === "draft") {
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center">
+        <InterludeAudioToggle muted={muted} onToggle={toggleMute} />
         <motion.div
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 2.4, repeat: Infinity }}
@@ -66,5 +76,10 @@ export function CvAnimatedView({
   const layoutId = getCvLayoutMeta(version.layout).id;
   const Layout = LAYOUT_COMPONENTS[layoutId] ?? CenteredLayout;
 
-  return <Layout cv={cv} version={version} />;
+  return (
+    <>
+      <InterludeAudioToggle muted={muted} onToggle={toggleMute} />
+      <Layout cv={cv} version={version} />
+    </>
+  );
 }
