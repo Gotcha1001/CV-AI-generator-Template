@@ -6,6 +6,7 @@ import { buildCenteredPdfDocument } from "./centered";
 import { buildSidebarPhotoPdfDocument } from "./sidebar-photo";
 import { buildSplitBannerPdfDocument } from "./split-banner";
 import { buildMinimalAtsPdfDocument } from "./minimal-ats";
+import { buildGraphStatsPdfDocument } from "./graph-stats";
 
 /**
  * One entry per CvLayoutId — must stay in sync with LAYOUT_COMPONENTS
@@ -20,4 +21,5 @@ export const PDF_LAYOUT_BUILDERS: Record<
   "sidebar-photo": buildSidebarPhotoPdfDocument,
   "split-banner": buildSplitBannerPdfDocument,
   "minimal-ats": buildMinimalAtsPdfDocument,
+  "graph-stats": buildGraphStatsPdfDocument,
 };

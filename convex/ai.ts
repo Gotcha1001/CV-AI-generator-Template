@@ -35,13 +35,48 @@ async function callOpenRouter(apiKey: string, prompt: string) {
           model,
           messages: [{ role: "user", content: prompt }],
           stream: false,
+          // Reasoning models (nemotron) burn tokens on hidden reasoning
+          // before they write the final answer — without this, the default
+          // budget can be exhausted by reasoning alone, leaving `content`
+          // empty. 4096 leaves headroom for reasoning + a full CV-shaped
+          // JSON payload.
+          max_tokens: 4096,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const raw = data.choices?.[0]?.message?.content ?? "";
-        return JSON.parse(raw.replace(/```json|```/g, "").trim());
+        const choice = data.choices?.[0];
+        const raw = choice?.message?.content ?? "";
+        const cleaned = raw.replace(/```json|```/g, "").trim();
+
+        // A 200 doesn't guarantee usable content — the model can return
+        // empty content (reasoning ate the token budget) or a
+        // finish_reason of "length" (cut off mid-JSON). Treat both as a
+        // retryable failure instead of letting JSON.parse throw straight
+        // out of this function, which used to skip the rest of the chain.
+        if (!cleaned) {
+          lastErr = new Error(
+            `OpenRouter returned empty content (${model}, finish_reason=${choice?.finish_reason ?? "unknown"})`,
+          );
+        } else {
+          try {
+            return JSON.parse(cleaned);
+          } catch (e) {
+            lastErr = new Error(
+              `OpenRouter returned unparsable JSON (${model}, finish_reason=${choice?.finish_reason ?? "unknown"}): ${cleaned.slice(0, 200)}`,
+            );
+          }
+        }
+
+        // Empty/truncated/unparsable content on THIS model — same "move
+        // on immediately" logic as a provider-down HTTP error below.
+        if (choice?.finish_reason === "length" || !cleaned) break;
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 500));
+          continue;
+        }
+        break;
       }
 
       const text = await response.text();
