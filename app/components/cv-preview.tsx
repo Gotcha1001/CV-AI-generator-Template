@@ -33,16 +33,15 @@ const LAYOUT_COMPONENTS: Record<
 export function CvAnimatedView({
   cv,
   version,
+  pdfUrl, // add this
 }: {
   cv: Doc<"cvs">;
   version: Doc<"cvVersions">;
+  pdfUrl?: string; // add this
 }) {
   const { fullName } = cv.personalInfo;
+  const resolvedPdfUrl = pdfUrl ?? `/api/cv/${cv.shareId}/pdf`; // add this
 
-  // Always-mounted here — the hook itself starts/stops based on the
-  // `active` flag it's given below, and tears down on unmount (i.e. when
-  // the person navigates away from this view). Mirrors the doc comment
-  // in graph-stats.tsx which assumed this was already happening.
   const { muted, toggleMute } = useInterludeAudio(true);
 
   if (cv.status === "generating" || cv.status === "draft") {
@@ -79,7 +78,8 @@ export function CvAnimatedView({
   return (
     <>
       <InterludeAudioToggle muted={muted} onToggle={toggleMute} />
-      <Layout cv={cv} version={version} />
+      <Layout cv={cv} version={version} pdfUrl={resolvedPdfUrl} />{" "}
+      {/* pass it down */}
     </>
   );
 }

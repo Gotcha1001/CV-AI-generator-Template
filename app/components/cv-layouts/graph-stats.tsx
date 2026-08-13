@@ -36,12 +36,13 @@ import {
   computeExperienceDepth,
 } from "@/lib/skill-signal";
 import type { CvLayoutProps } from "./types";
+import { Button } from "@/components/ui/button";
 
 // Note: the interlude audio track is NOT wired up here — it plays for
 // every layout via CvAnimatedView in components/cv-preview.tsx, not
 // per-template. See hooks/use-interlude-audio.ts.
 
-export function GraphStatsLayout({ cv, version }: CvLayoutProps) {
+export function GraphStatsLayout({ cv, version, pdfUrl }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -139,6 +140,13 @@ export function GraphStatsLayout({ cv, version }: CvLayoutProps) {
             </span>
           )}
         </div>
+      </div>
+
+      <div className="flex justify-center my-6">
+        <a href={pdfUrl}>
+          {/*      ^^^^^^ was: `/api/cv/${cv.shareId}/pdf` */}
+          <Button className={theme.web.button}>Download PDF</Button>
+        </a>
       </div>
 
       {/* ---------- Skill signal chart ---------- */}

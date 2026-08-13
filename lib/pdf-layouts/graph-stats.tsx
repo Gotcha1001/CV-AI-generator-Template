@@ -1,10 +1,10 @@
 // lib/pdf-layouts/graph-stats.tsx
 //
 // Mirrors components/cv-layouts/graph-stats.tsx for print. @react-pdf/
-// renderer can't run recharts or CSS animation, so the "chart" here is
-// a static list of skill names with a colored <View> bar sized by
-// width percentage — same computeSkillSignals() scores as the web
-// version, just drawn with boxes instead of SVG.
+// renderer can't run recharts or CSS animation, so both "charts" here
+// are static bar lists sized by percentage — same computeSkillSignals()
+// / computeExperienceDepth() data the web version's Bar/Radar charts
+// use, just drawn with boxes instead of SVG.
 import {
   Document,
   Page,
@@ -16,7 +16,10 @@ import {
 } from "@react-pdf/renderer";
 import type { PdfLayoutData } from "./types";
 import { toWhatsAppNumber } from "./types";
-import { computeSkillSignals } from "@/lib/skill-signal";
+import {
+  computeSkillSignals,
+  computeExperienceDepth,
+} from "@/lib/skill-signal";
 
 function buildStyles(theme: PdfLayoutData["theme"]) {
   return StyleSheet.create({
@@ -70,6 +73,14 @@ function buildStyles(theme: PdfLayoutData["theme"]) {
     entryTitle: { fontSize: 9.5, fontWeight: 700 },
     entryPeriod: { fontSize: 8.5, color: "#777" },
     bullet: { fontSize: 9, color: "#444", marginTop: 2, lineHeight: 1.4 },
+    testimonial: {
+      fontSize: 9,
+      fontStyle: "italic",
+      color: "#555",
+      marginBottom: 4,
+    },
+    lineText: { fontSize: 9.5 },
+    listItem: { fontSize: 9, color: "#555", marginBottom: 3 },
     closingNote: {
       fontSize: 9.5,
       color: theme.pdf.closingNote,
@@ -80,10 +91,22 @@ function buildStyles(theme: PdfLayoutData["theme"]) {
 }
 
 export function buildGraphStatsPdfDocument(data: PdfLayoutData) {
-  const { cv, theme, g, fullName, email, phone, address, idNumber, photoUrl } =
-    data;
+  const {
+    cv,
+    theme,
+    g,
+    testimonials,
+    fullName,
+    email,
+    phone,
+    address,
+    idNumber,
+    photoUrl,
+  } = data;
   const styles = buildStyles(theme);
   const skillSignals = computeSkillSignals(g).slice(0, 8); // keep the printed page tidy
+  const experienceDepth = computeExperienceDepth(g);
+  const maxBullets = Math.max(...experienceDepth.map((e) => e.bullets), 1);
 
   return (
     <Document>
@@ -142,6 +165,28 @@ export function buildGraphStatsPdfDocument(data: PdfLayoutData) {
           </View>
         )}
 
+        {/* Static stand-in for the web version's Radar chart — react-pdf
+            can't run recharts, so this uses the same bar treatment as
+            Skill signal above, scaled to the deepest role's bullet count. */}
+        {experienceDepth.length > 1 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Experience depth</Text>
+            {experienceDepth.map((e, i) => (
+              <View key={`${e.label}-${i}`} style={styles.skillRow}>
+                <Text style={styles.skillLabel}>{e.label}</Text>
+                <View style={styles.skillTrack}>
+                  <View
+                    style={[
+                      styles.skillFill,
+                      { width: `${(e.bullets / maxBullets) * 100}%` },
+                    ]}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {g && g.experience.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Experience</Text>
@@ -175,6 +220,50 @@ export function buildGraphStatsPdfDocument(data: PdfLayoutData) {
                 <Text style={styles.bullet}>{ed.institution}</Text>
               </View>
             ))}
+          </View>
+        )}
+
+        {testimonials && testimonials.length > 0 && (
+          <View style={styles.section} wrap={false}>
+            <Text style={styles.sectionTitle}>Testimonials</Text>
+            {testimonials.map((t, i) => (
+              <Text key={i} style={styles.testimonial}>
+                &quot;{t.text}&quot; — {t.author}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {(cv.links.length > 0 || cv.references.length > 0) && (
+          <View style={styles.section} wrap={false}>
+            {cv.links.length > 0 && (
+              <View style={{ marginBottom: 8 }}>
+                <Text style={styles.sectionTitle}>Links</Text>
+                {cv.links.map((l, i) => (
+                  <Link
+                    key={i}
+                    src={l.url}
+                    style={[
+                      styles.lineText,
+                      { color: theme.pdf.link, marginBottom: 2 },
+                    ]}
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </View>
+            )}
+            {cv.references.length > 0 && (
+              <View>
+                <Text style={styles.sectionTitle}>References</Text>
+                {cv.references.map((r, i) => (
+                  <Text key={i} style={styles.listItem}>
+                    {r.name}
+                    {r.relationship ? ` (${r.relationship})` : ""} — {r.contact}
+                  </Text>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
