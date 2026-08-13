@@ -370,7 +370,7 @@ const CARD_HOVER: Record<string, string> = {
   "teal-breeze": "hover:bg-teal-500/10 dark:hover:bg-teal-500/15",
 };
 
-export function CenteredLayout({ cv, version }: CvLayoutProps) {
+export function CenteredLayout({ cv, version, pdfUrl }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -471,7 +471,8 @@ export function CenteredLayout({ cv, version }: CvLayoutProps) {
         </motion.div>
 
         <div className="flex justify-center my-6">
-          <a href={`/api/cv/${cv.shareId}/pdf`}>
+          <a href={pdfUrl}>
+            {/*      ^^^^^^ was: `/api/cv/${cv.shareId}/pdf` */}
             <Button className={theme.web.button}>Download PDF</Button>
           </a>
         </div>

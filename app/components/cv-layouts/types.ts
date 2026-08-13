@@ -14,4 +14,5 @@ import type { Doc } from "@/convex/_generated/dataModel";
 export interface CvLayoutProps {
   cv: Doc<"cvs">;
   version: Doc<"cvVersions">;
+  pdfUrl: string;
 }

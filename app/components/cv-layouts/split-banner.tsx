@@ -258,7 +258,7 @@ import { Button } from "@/components/ui/button";
 import { prepareCvData, toWhatsAppNumber } from "@/lib/cv-data";
 import type { CvLayoutProps } from "./types";
 
-export function SplitBannerLayout({ cv, version }: CvLayoutProps) {
+export function SplitBannerLayout({ cv, version, pdfUrl }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -324,7 +324,7 @@ export function SplitBannerLayout({ cv, version }: CvLayoutProps) {
           )}
         </div>
         <div className="mt-5">
-          <a href={`/api/cv/${cv.shareId}/pdf`}>
+          <a href={pdfUrl}>
             <Button variant="secondary" size="sm">
               Download PDF
             </Button>

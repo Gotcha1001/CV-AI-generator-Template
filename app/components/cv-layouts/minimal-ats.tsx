@@ -217,7 +217,7 @@ import { Button } from "@/components/ui/button";
 import { prepareCvData, toWhatsAppNumber } from "@/lib/cv-data";
 import type { CvLayoutProps } from "./types";
 
-export function MinimalAtsLayout({ cv, version }: CvLayoutProps) {
+export function MinimalAtsLayout({ cv, version, pdfUrl }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -281,7 +281,7 @@ export function MinimalAtsLayout({ cv, version }: CvLayoutProps) {
             </p>
           </div>
         </div>
-        <a href={`/api/cv/${cv.shareId}/pdf`}>
+        <a href={pdfUrl}>
           <Button variant="outline" size="sm">
             Download PDF
           </Button>

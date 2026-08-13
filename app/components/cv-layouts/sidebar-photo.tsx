@@ -328,7 +328,7 @@ const INTEREST_HOVER: Record<string, string> = {
 
 const LONG_INTEREST_THRESHOLD = 40;
 
-export function SidebarPhotoLayout({ cv, version }: CvLayoutProps) {
+export function SidebarPhotoLayout({ cv, version, pdfUrl }: CvLayoutProps) {
   const {
     g,
     theme,
@@ -491,7 +491,7 @@ export function SidebarPhotoLayout({ cv, version }: CvLayoutProps) {
               <p className="text-sm text-muted-foreground mt-1">{address}</p>
             )}
             <div className="mt-4">
-              <a href={`/api/cv/${cv.shareId}/pdf`}>
+              <a href={pdfUrl}>
                 <Button className={theme.web.button} size="sm">
                   Download PDF
                 </Button>

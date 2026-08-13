@@ -207,8 +207,12 @@ export default function CvHistoryPage() {
           </DialogHeader>
 
           <div className="px-2 pb-6">
-            {previewVersion ? (
-              <CvAnimatedView cv={cv} version={previewVersion} />
+            {previewVersion && previewVersionId ? (
+              <CvAnimatedView
+                cv={cv}
+                version={previewVersion}
+                pdfUrl={`/api/cv/versions/${cvId}/${previewVersionId}/pdf`}
+              />
             ) : (
               <div className="text-sm text-muted-foreground py-16 text-center">
                 Loading version...
